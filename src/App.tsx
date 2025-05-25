@@ -1,5 +1,6 @@
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
@@ -7,11 +8,13 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  useReactFlow,
   type Connection,
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { toPng } from 'html-to-image'
 import {
   Table,
   Database,
@@ -23,13 +26,45 @@ import {
   Maximize2,
 } from 'lucide-react'
 import { TableNode } from './components/table-node'
-import { RelationshipPanel } from './components/eelationship-panel'
-
+import { RelationshipPanel } from './components/relationship-panel'
 const nodeTypes = {
   tableNode: TableNode,
 }
 
 function App() {
+  const { fitView } = useReactFlow()
+  const flowRef = useRef(null)
+
+  const handleDownload = useCallback(() => {
+    if (!flowRef.current) return
+
+    fitView()
+
+    toPng(flowRef.current, {
+      filter: (node) => {
+        // Exclude UI elements like minimap, controls, and panels
+        const excludeClasses = [
+          'react-flow__minimap',
+          'react-flow__controls',
+          'react-flow__panel',
+          'lucide-icon',
+          'react-flow__node-toolbar',
+          'toolbar',
+        ]
+        return !excludeClasses.some((className) =>
+          node?.classList?.contains(className)
+        )
+      },
+      backgroundColor: '#1a1a1a',
+      quality: 1,
+      pixelRatio: 2,
+    }).then((dataUrl) => {
+      const link = document.createElement('a')
+      link.download = 'diagram.png'
+      link.href = dataUrl
+      link.click()
+    })
+  }, [fitView])
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [selectedDbType, setSelectedDbType] = useState<'mysql' | 'mongodb'>(
@@ -159,83 +194,79 @@ function App() {
   }, [])
 
   return (
-    <div className='h-screen text-white' style={{ backgroundColor: '#121212' }}>
-      {/* Header */}
-      <header
-        className='border-b px-6 py-4'
-        style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}
-      >
+    <>
+      <header className='border-b px-6 py-4 bg-[#1a1a1a] justify-between flex flex-row border-[#2a2a2a]'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-4'>
             <h1 className='text-2xl font-bold text-blue-400'>DB Diagram</h1>
             <span className='text-slate-400'>Database Design Tool</span>
           </div>
+        </div>
 
-          {/* Database Type Selector */}
-          <div className='flex items-center space-x-4'>
-            <span className='text-sm text-slate-400'>Database Type:</span>
-            <div
-              className='flex rounded-lg p-1'
-              style={{ backgroundColor: '#2a2a2a' }}
+        {/* Database Type Selector */}
+        <div className='flex items-center space-x-4'>
+          <span className='text-sm text-slate-400'>Database Type:</span>
+          <div
+            className='flex rounded-lg p-1'
+            style={{ backgroundColor: '#2a2a2a' }}
+          >
+            <button
+              onClick={() => setSelectedDbType('mysql')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                selectedDbType === 'mysql'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+              style={
+                selectedDbType !== 'mysql'
+                  ? { backgroundColor: 'transparent' }
+                  : {}
+              }
+              onMouseEnter={(e) => {
+                if (selectedDbType !== 'mysql') {
+                  e.currentTarget.style.backgroundColor = '#3a3a3a'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedDbType !== 'mysql') {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                }
+              }}
             >
-              <button
-                onClick={() => setSelectedDbType('mysql')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedDbType === 'mysql'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                style={
-                  selectedDbType !== 'mysql'
-                    ? { backgroundColor: 'transparent' }
-                    : {}
+              MySQL
+            </button>
+            <button
+              onClick={() => setSelectedDbType('mongodb')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                selectedDbType === 'mongodb'
+                  ? 'bg-green-600 text-white'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+              style={
+                selectedDbType !== 'mongodb'
+                  ? { backgroundColor: 'transparent' }
+                  : {}
+              }
+              onMouseEnter={(e) => {
+                if (selectedDbType !== 'mongodb') {
+                  e.currentTarget.style.backgroundColor = '#3a3a3a'
                 }
-                onMouseEnter={(e) => {
-                  if (selectedDbType !== 'mysql') {
-                    e.currentTarget.style.backgroundColor = '#3a3a3a'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedDbType !== 'mysql') {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
-              >
-                MySQL
-              </button>
-              <button
-                onClick={() => setSelectedDbType('mongodb')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedDbType === 'mongodb'
-                    ? 'bg-green-600 text-white'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                style={
-                  selectedDbType !== 'mongodb'
-                    ? { backgroundColor: 'transparent' }
-                    : {}
+              }}
+              onMouseLeave={(e) => {
+                if (selectedDbType !== 'mongodb') {
+                  e.currentTarget.style.backgroundColor = 'transparent'
                 }
-                onMouseEnter={(e) => {
-                  if (selectedDbType !== 'mongodb') {
-                    e.currentTarget.style.backgroundColor = '#3a3a3a'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedDbType !== 'mongodb') {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
-              >
-                MongoDB
-              </button>
-            </div>
+              }}
+            >
+              MongoDB
+            </button>
           </div>
         </div>
       </header>
-
       {/* Main Canvas Area */}
-      <div className='h-[calc(100vh-80px)] relative'>
+      <div className='h-[calc(100vh-70px)] relative'>
         <ReactFlow
+          ref={flowRef}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -278,7 +309,7 @@ function App() {
               <div className='space-y-2'>
                 <button
                   onClick={addNewTable}
-                  className='w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2'
+                  className='w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/20'
                 >
                   {selectedDbType === 'mysql' ? (
                     <Table className='w-4 h-4' />
@@ -289,28 +320,14 @@ function App() {
                 </button>
                 <button
                   onClick={exportDiagram}
-                  className='w-full px-4 py-2 text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2'
-                  style={{ backgroundColor: '#2a2a2a' }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = '#3a3a3a')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = '#2a2a2a')
-                  }
+                  className='w-full px-4 py-2 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-gray-500/10'
                 >
                   <Download className='w-4 h-4 text-gray-300' />
                   Export JSON
                 </button>
                 <button
                   onClick={clearCanvas}
-                  className='w-full px-4 py-2 text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2'
-                  style={{ backgroundColor: '#2a2a2a' }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = '#3a3a3a')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = '#2a2a2a')
-                  }
+                  className='w-full px-4 py-2 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-gray-500/10'
                 >
                   <Trash2 className='w-4 h-4 text-gray-300' />
                   Clear Canvas
@@ -397,6 +414,12 @@ function App() {
 
           {/* Enhanced Info Panel */}
           <Panel position='top-right' className='m-4'>
+            <button
+              onClick={handleDownload}
+              className='px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 mb-4 shadow-lg hover:shadow-blue-500/20'
+            >
+              Export PNG
+            </button>
             <div
               className='rounded-lg p-4 shadow-xl'
               style={{
@@ -459,8 +482,16 @@ function App() {
           onDeleteRelationship={deleteRelationship}
         />
       </div>
-    </div>
+    </>
   )
 }
 
-export default App
+function WrappedApp() {
+  return (
+    <ReactFlowProvider>
+      <App />
+    </ReactFlowProvider>
+  )
+}
+
+export default WrappedApp
