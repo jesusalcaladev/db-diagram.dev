@@ -1,7 +1,8 @@
 import { Handle, Position, NodeToolbar, useReactFlow } from '@xyflow/react'
-import { Table, Database, Trash2, Edit3, Copy } from 'lucide-react'
+import { Table, Database, Trash2, Copy, Plus } from 'lucide-react'
 import { useState } from 'react'
-import { EditTableModal } from './edit-table-node'
+import { motion, AnimatePresence } from 'motion/react'
+import { TypesValues } from '../constants/types-values'
 
 interface TableNodeProps {
   id: string
@@ -23,7 +24,11 @@ interface TableNodeProps {
 export function TableNode({ id, data }: TableNodeProps) {
   const { label, type, fields = [] } = data
   const { deleteElements, getNode, addNodes, setNodes } = useReactFlow()
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingField, setEditingField] = useState<{
+    index: number
+    type: 'name' | 'type'
+  } | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   const handleDelete = () => {
     deleteElements({ nodes: [{ id }] })
@@ -44,22 +49,46 @@ export function TableNode({ id, data }: TableNodeProps) {
           label: `${node.data.label}_copy`,
         },
       }
-      // Agregate new node duplicated
       addNodes([newNode])
-
-      // This would need to be handled by the parent component
-      console.log('Duplicate node:', newNode)
     }
   }
 
-  const handleEdit = () => {
-    setIsEditModalOpen(true)
+  const handleFieldEdit = (
+    index: number,
+    type: 'name' | 'type',
+    currentValue: string
+  ) => {
+    setEditingField({ index, type })
+    setEditValue(currentValue)
   }
 
-  const handleSaveEdit = (updatedData: {
-    label: string
-    fields: Array<{ name: string; type: string; isPrimary?: boolean }>
-  }) => {
+  const handleFieldSave = () => {
+    if (!editingField) return
+
+    setNodes((nodes) =>
+      nodes.map((node) => {
+        if (node.id === id) {
+          const updatedFields = [...fields]
+          if (editingField.type === 'name') {
+            updatedFields[editingField.index].name = editValue
+          } else {
+            updatedFields[editingField.index].type = editValue
+          }
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              fields: updatedFields,
+            },
+          }
+        }
+        return node
+      })
+    )
+    setEditingField(null)
+  }
+
+  const handleAddField = () => {
     setNodes((nodes) =>
       nodes.map((node) => {
         if (node.id === id) {
@@ -67,8 +96,7 @@ export function TableNode({ id, data }: TableNodeProps) {
             ...node,
             data: {
               ...node.data,
-              label: updatedData.label,
-              fields: updatedData.fields,
+              fields: [...fields, { name: 'new_field', type: 'string' }],
             },
           }
         }
@@ -78,7 +106,7 @@ export function TableNode({ id, data }: TableNodeProps) {
   }
 
   return (
-    <>
+    <AnimatePresence>
       <NodeToolbar position={Position.Top} offset={10}>
         <div
           className='flex items-center gap-1 p-1 rounded-lg backdrop-blur-xl border'
@@ -95,13 +123,7 @@ export function TableNode({ id, data }: TableNodeProps) {
           >
             <Copy className='w-4 h-4' />
           </button>
-          <button
-            onClick={handleEdit}
-            className='p-2 rounded-md text-gray-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition-all duration-200'
-            title='Edit Table'
-          >
-            <Edit3 className='w-4 h-4' />
-          </button>
+
           <div className='w-px h-6 bg-gray-600 mx-1'></div>
           <button
             onClick={handleDelete}
@@ -147,8 +169,12 @@ export function TableNode({ id, data }: TableNodeProps) {
           {fields.length > 0 ? (
             <div className='space-y-1'>
               {fields.map((field, index) => (
-                <div
+                <motion.div
                   key={index}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.2 }}
                   className='relative flex justify-between items-center px-2 py-1.5 text-xs rounded transition-all duration-200 group hover:bg-gray-800/50'
                 >
                   {/* Left handle for each field */}
@@ -166,16 +192,66 @@ export function TableNode({ id, data }: TableNodeProps) {
                     }}
                   />
 
-                  <span
-                    className={`font-medium ${
-                      field.isPrimary ? 'text-yellow-400' : 'text-gray-200'
-                    }`}
-                  >
-                    {field.name}
-                  </span>
-                  <span className='text-gray-400 text-[10px] font-mono'>
-                    {field.type}
-                  </span>
+                  {editingField?.index === index &&
+                  editingField?.type === 'name' ? (
+                    <motion.input
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: 1 }}
+                      className='bg-gray-700 text-gray-200 px-2 py-1 rounded outline-none focus:ring-2 ring-blue-500'
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={handleFieldSave}
+                      onKeyDown={(e) => e.key === 'Enter' && handleFieldSave()}
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      onDoubleClick={() =>
+                        handleFieldEdit(index, 'name', field.name)
+                      }
+                      className={`font-medium cursor-pointer ${
+                        field.isPrimary ? 'text-yellow-400' : 'text-gray-200'
+                      }`}
+                    >
+                      {field.name}
+                    </span>
+                  )}
+                  {editingField?.index === index &&
+                  editingField?.type === 'type' ? (
+                    <motion.select
+                      initial={{ scale: 0.95 }}
+                      animate={{ scale: 1 }}
+                      className='bg-gray-700 text-gray-200 px-2 py-1 rounded outline-none focus:ring-2 ring-blue-500'
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={handleFieldSave}
+                      autoFocus
+                    >
+                      {Object.entries(TypesValues[type]).map(
+                        ([category, types]) => (
+                          <optgroup
+                            key={category}
+                            label={category.toUpperCase()}
+                          >
+                            {types.map((dataType) => (
+                              <option key={dataType} value={dataType}>
+                                {dataType}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )
+                      )}
+                    </motion.select>
+                  ) : (
+                    <span
+                      onDoubleClick={() =>
+                        handleFieldEdit(index, 'type', field.type)
+                      }
+                      className='text-gray-400 text-[10px] font-mono cursor-pointer'
+                    >
+                      {field.type}
+                    </span>
+                  )}
 
                   {/* Right handle for each field */}
                   <Handle
@@ -191,7 +267,7 @@ export function TableNode({ id, data }: TableNodeProps) {
                       transform: 'translateY(-50%)',
                     }}
                   />
-                </div>
+                </motion.div>
               ))}
             </div>
           ) : (
@@ -199,6 +275,15 @@ export function TableNode({ id, data }: TableNodeProps) {
               No fields defined
             </div>
           )}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleAddField}
+            className='w-full mt-2 p-2 rounded-md text-gray-400 hover:text-blue-300 hover:bg-blue-500/20 transition-all duration-200 flex items-center justify-center gap-2'
+          >
+            <Plus className='w-4 h-4' />
+            <span className='text-xs'>Add Field</span>
+          </motion.button>
         </div>
 
         {/* Main table connection handles */}
@@ -225,18 +310,6 @@ export function TableNode({ id, data }: TableNodeProps) {
           }}
         />
       </div>
-
-      {/* Edit Modal */}
-      <EditTableModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSave={handleSaveEdit}
-        initialData={{
-          label,
-          type,
-          fields,
-        }}
-      />
-    </>
+    </AnimatePresence>
   )
 }
