@@ -26,7 +26,7 @@ export function TableNode({ id, data }: TableNodeProps) {
   const { deleteElements, getNode, addNodes, setNodes } = useReactFlow()
   const [editingField, setEditingField] = useState<{
     index: number
-    type: 'name' | 'type'
+    type: 'name' | 'type' | 'tableName'
   } | null>(null)
   const [editValue, setEditValue] = useState('')
 
@@ -68,18 +68,28 @@ export function TableNode({ id, data }: TableNodeProps) {
     setNodes((nodes) =>
       nodes.map((node) => {
         if (node.id === id) {
-          const updatedFields = [...fields]
-          if (editingField.type === 'name') {
-            updatedFields[editingField.index].name = editValue
+          if (editingField.type === 'tableName') {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                label: editValue,
+              },
+            }
           } else {
-            updatedFields[editingField.index].type = editValue
-          }
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              fields: updatedFields,
-            },
+            const updatedFields = [...fields]
+            if (editingField.type === 'name') {
+              updatedFields[editingField.index].name = editValue
+            } else {
+              updatedFields[editingField.index].type = editValue
+            }
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                fields: updatedFields,
+              },
+            }
           }
         }
         return node
@@ -160,7 +170,28 @@ export function TableNode({ id, data }: TableNodeProps) {
                 <Database className='w-4 h-4 text-green-400' />
               </div>
             )}
-            <h3 className='text-sm font-semibold text-gray-100'>{label}</h3>
+            {editingField?.type === 'tableName' ? (
+              <motion.input
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                className='bg-gray-700 text-gray-100 px-2 py-1 rounded outline-none focus:ring-2 ring-blue-500 text-sm font-semibold'
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleFieldSave}
+                onKeyDown={(e) => e.key === 'Enter' && handleFieldSave()}
+                autoFocus
+              />
+            ) : (
+              <h3
+                className='text-sm font-semibold text-gray-100 cursor-pointer hover:text-blue-400 transition-colors'
+                onDoubleClick={() => {
+                  setEditingField({ index: -1, type: 'tableName' })
+                  setEditValue(label)
+                }}
+              >
+                {label}
+              </h3>
+            )}
           </div>
         </div>
 
@@ -177,6 +208,30 @@ export function TableNode({ id, data }: TableNodeProps) {
                   transition={{ duration: 0.2 }}
                   className='relative flex justify-between items-center px-2 py-1.5 text-xs rounded transition-all duration-200 group hover:bg-gray-800/50'
                 >
+                  <button
+                    onClick={() => {
+                      setNodes((nodes) =>
+                        nodes.map((node) => {
+                          if (node.id === id) {
+                            const updatedFields = [...fields]
+                            updatedFields.splice(index, 1)
+                            return {
+                              ...node,
+                              data: {
+                                ...node.data,
+                                fields: updatedFields,
+                              },
+                            }
+                          }
+                          return node
+                        })
+                      )
+                    }}
+                    className='absolute left-0 -ml-6 p-1 rounded-md text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-300 hover:bg-red-500/20 transition-all duration-200'
+                    title='Delete Field'
+                  >
+                    <Trash2 className='w-3 h-3' />
+                  </button>
                   {/* Left handle for each field */}
                   <Handle
                     type='target'
@@ -195,13 +250,19 @@ export function TableNode({ id, data }: TableNodeProps) {
                   {editingField?.index === index &&
                   editingField?.type === 'name' ? (
                     <motion.input
-                      initial={{ scale: 0.95 }}
-                      animate={{ scale: 1 }}
-                      className='bg-gray-700 text-gray-200 px-2 py-1 rounded outline-none focus:ring-2 ring-blue-500'
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 25,
+                      }}
+                      className='bg-gray-700/50 backdrop-blur-sm text-gray-100 px-3 py-1.5 rounded-md outline-none border border-gray-600/50 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 shadow-inner shadow-black/10 placeholder-gray-400 w-full transition-all duration-200'
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={handleFieldSave}
                       onKeyDown={(e) => e.key === 'Enter' && handleFieldSave()}
+                      placeholder='Field name...'
                       autoFocus
                     />
                   ) : (
@@ -219,9 +280,14 @@ export function TableNode({ id, data }: TableNodeProps) {
                   {editingField?.index === index &&
                   editingField?.type === 'type' ? (
                     <motion.select
-                      initial={{ scale: 0.95 }}
-                      animate={{ scale: 1 }}
-                      className='bg-gray-700 text-gray-200 px-2 py-1 rounded outline-none focus:ring-2 ring-blue-500'
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 25,
+                      }}
+                      className='bg-gray-700/50 backdrop-blur-sm text-gray-200 px-3 py-1.5 rounded-md outline-none border border-gray-600/50 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 shadow-inner shadow-black/10 w-full transition-all duration-200 cursor-pointer appearance-none bg-[length:1.25em_1.25em] bg-[right_0.5rem_center] bg-no-repeat'
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={handleFieldSave}
