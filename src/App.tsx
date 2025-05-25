@@ -25,6 +25,7 @@ import {
   Grid,
   Maximize2,
 } from 'lucide-react'
+import { Button } from './components/ui/button'
 import { TableNode } from './components/table-node'
 import { RelationshipPanel } from './components/relationship-panel'
 const nodeTypes = {
@@ -307,31 +308,36 @@ function App() {
                 Tools
               </h3>
               <div className='space-y-2'>
-                <button
+                <Button
                   onClick={addNewTable}
-                  className='w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/20'
+                  variant='primary'
+                  fullWidth
+                  icon={
+                    selectedDbType === 'mysql' ? (
+                      <Table className='w-4 h-4' />
+                    ) : (
+                      <Database className='w-4 h-4' />
+                    )
+                  }
                 >
-                  {selectedDbType === 'mysql' ? (
-                    <Table className='w-4 h-4' />
-                  ) : (
-                    <Database className='w-4 h-4' />
-                  )}
                   {selectedDbType === 'mysql' ? 'Add Table' : 'Add Collection'}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={exportDiagram}
-                  className='w-full px-4 py-2 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-gray-500/10'
+                  variant='secondary'
+                  fullWidth
+                  icon={<Download className='w-4 h-4' />}
                 >
-                  <Download className='w-4 h-4 text-gray-300' />
                   Export JSON
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={clearCanvas}
-                  className='w-full px-4 py-2 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-gray-500/10'
+                  variant='danger'
+                  fullWidth
+                  icon={<Trash2 className='w-4 h-4' />}
                 >
-                  <Trash2 className='w-4 h-4 text-gray-300' />
                   Clear Canvas
-                </button>
+                </Button>
               </div>
             </div>
           </Panel>
@@ -414,12 +420,14 @@ function App() {
 
           {/* Enhanced Info Panel */}
           <Panel position='top-right' className='m-4'>
-            <button
+            <Button
               onClick={handleDownload}
-              className='px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 mb-4 shadow-lg hover:shadow-blue-500/20'
+              variant='primary'
+              className='mb-4'
+              icon={<Download className='w-4 h-4' />}
             >
               Export PNG
-            </button>
+            </Button>
             <div
               className='rounded-lg p-4 shadow-xl'
               style={{
