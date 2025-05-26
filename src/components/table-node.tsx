@@ -3,6 +3,7 @@ import { Table, Database, Trash2, Copy, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { TypesValues } from '../constants/types-values'
+import { FieldInput } from './ui/field-input'
 
 interface TableNodeProps {
   id: string
@@ -171,15 +172,10 @@ export function TableNode({ id, data }: TableNodeProps) {
               </div>
             )}
             {editingField?.type === 'tableName' ? (
-              <motion.input
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                className='bg-gray-700 text-gray-100 px-2 py-1 rounded outline-none focus:ring-2 ring-blue-500 text-sm font-semibold'
+              <FieldInput
                 value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={handleFieldSave}
-                onKeyDown={(e) => e.key === 'Enter' && handleFieldSave()}
-                autoFocus
+                onChange={setEditValue}
+                onSave={handleFieldSave}
               />
             ) : (
               <h3
@@ -345,7 +341,7 @@ export function TableNode({ id, data }: TableNodeProps) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleAddField}
-            className='w-full mt-2 p-2 rounded-md text-gray-400 hover:text-blue-300 hover:bg-blue-500/20 transition-all duration-200 flex items-center justify-center gap-2'
+            className='button-add-field w-full mt-2 p-2 rounded-md text-gray-400 hover:text-blue-300 hover:bg-blue-500/20 transition-all duration-200 flex items-center justify-center gap-2'
           >
             <Plus className='w-4 h-4' />
             <span className='text-xs'>Add Field</span>
