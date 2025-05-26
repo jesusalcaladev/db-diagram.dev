@@ -2,7 +2,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   Background,
-  Controls,
   MiniMap,
   Panel,
   useNodesState,
@@ -19,10 +18,6 @@ import {
   Database,
   Trash2,
   Download,
-  Eye,
-  EyeOff,
-  Grid,
-  Maximize2,
 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { TableNode } from './components/table-node'
