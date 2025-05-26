@@ -14,7 +14,6 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useState, useCallback, useRef } from 'react'
-import { toPng } from 'html-to-image'
 import {
   Table,
   Database,
@@ -28,6 +27,10 @@ import {
 import { Button } from './components/ui/button'
 import { TableNode } from './components/table-node'
 import { RelationshipPanel } from './components/relationship-panel'
+import { type ModelBaseDB } from './types'
+import { exportToJson, exportToPng } from './utils/export-diagram'
+import { PanelRight } from './components/panel-right'
+import { PanelBottomLeft } from './components/panel-bottom-left'
 const nodeTypes = {
   tableNode: TableNode,
 }
@@ -36,46 +39,13 @@ function App() {
   const { fitView } = useReactFlow()
   const flowRef = useRef(null)
 
-  const handleDownload = useCallback(() => {
-    if (!flowRef.current) return
-
-    fitView()
-
-    toPng(flowRef.current, {
-      filter: (node) => {
-        // Exclude UI elements like minimap, controls, and panels
-        const excludeClasses = [
-          'react-flow__minimap',
-          'react-flow__controls',
-          'react-flow__panel',
-          'lucide-icon',
-          'react-flow__node-toolbar',
-          'toolbar',
-        ]
-        return !excludeClasses.some((className) =>
-          node?.classList?.contains(className)
-        )
-      },
-      backgroundColor: '#1a1a1a',
-      quality: 1,
-      pixelRatio: 2,
-    }).then((dataUrl) => {
-      const link = document.createElement('a')
-      link.download = 'diagram.png'
-      link.href = dataUrl
-      link.click()
-    })
-  }, [fitView])
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
-  const [selectedDbType, setSelectedDbType] = useState<'mysql' | 'mongodb'>(
-    'mysql'
-  )
+  const [selectedDbType, setSelectedDbType] = useState<ModelBaseDB>('mysql')
   const [nodeId, setNodeId] = useState(1)
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null)
   const [showGrid, setShowGrid] = useState(true)
   const [showMiniMap, setShowMiniMap] = useState(true)
-  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -167,97 +137,62 @@ function App() {
     [setEdges]
   )
 
-  const exportDiagram = useCallback(() => {
-    const diagramData = {
-      nodes,
-      edges,
-      dbType: selectedDbType,
-      timestamp: new Date().toISOString(),
-    }
-    const dataStr = JSON.stringify(diagramData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `db-diagram-${selectedDbType}-${Date.now()}.json`
-    link.click()
-    URL.revokeObjectURL(url)
-  }, [nodes, edges, selectedDbType])
-
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen()
-      setIsFullscreen(true)
-    } else {
-      document.exitFullscreen()
-      setIsFullscreen(false)
-    }
-  }, [])
-
   return (
     <>
-      <header className='border-b px-6 py-4 bg-[#1a1a1a] justify-between flex flex-row border-[#2a2a2a]'>
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center space-x-4'>
-            <h1 className='text-2xl font-bold text-blue-400'>DB Diagram</h1>
-            <span className='text-slate-400'>Database Design Tool</span>
+      <header
+        className='border-b border-white/10 px-8 py-5 justify-between flex flex-row sticky top-0 z-50'
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1))',
+          backdropFilter: 'blur(12px)',
+          boxShadow:
+            '0 4px 30px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+        }}
+      >
+        <div className='flex items-center justify-between gap-8'>
+          <div className='flex items-center gap-6'>
+            <h1 className='text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400'>
+              DB Diagram
+            </h1>
+            <div className='h-6 w-[1px] bg-white/10 mx-2' />
+            <span className='text-slate-300 font-medium'>
+              Database Design Tool
+            </span>
           </div>
         </div>
 
         {/* Database Type Selector */}
         <div className='flex items-center space-x-4'>
-          <span className='text-sm text-slate-400'>Database Type:</span>
+          <span className='text-sm text-slate-300 font-medium'>
+            Database Type
+          </span>
           <div
-            className='flex rounded-lg p-1'
-            style={{ backgroundColor: '#2a2a2a' }}
+            className='flex items-center gap-2 px-2 py-1.5 rounded-xl'
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.15))',
+              backdropFilter: 'blur(8px)',
+              boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
           >
             <button
               onClick={() => setSelectedDbType('mysql')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                 selectedDbType === 'mysql'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:text-white'
+                  ? 'bg-gradient-to-r from-blue-500/30 to-blue-400/20 text-blue-300 shadow-lg shadow-blue-500/20 scale-105'
+                  : 'text-slate-400 hover:text-blue-300 hover:bg-blue-500/10 hover:scale-105'
               }`}
-              style={
-                selectedDbType !== 'mysql'
-                  ? { backgroundColor: 'transparent' }
-                  : {}
-              }
-              onMouseEnter={(e) => {
-                if (selectedDbType !== 'mysql') {
-                  e.currentTarget.style.backgroundColor = '#3a3a3a'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedDbType !== 'mysql') {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }
-              }}
             >
               MySQL
             </button>
             <button
               onClick={() => setSelectedDbType('mongodb')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                 selectedDbType === 'mongodb'
-                  ? 'bg-green-600 text-white'
-                  : 'text-gray-300 hover:text-white'
+                  ? 'bg-gradient-to-r from-green-500/30 to-green-400/20 text-green-300 shadow-lg shadow-green-500/20 scale-105'
+                  : 'text-slate-400 hover:text-green-300 hover:bg-green-500/10 hover:scale-105'
               }`}
-              style={
-                selectedDbType !== 'mongodb'
-                  ? { backgroundColor: 'transparent' }
-                  : {}
-              }
-              onMouseEnter={(e) => {
-                if (selectedDbType !== 'mongodb') {
-                  e.currentTarget.style.backgroundColor = '#3a3a3a'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedDbType !== 'mongodb') {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }
-              }}
             >
               MongoDB
             </button>
@@ -265,7 +200,7 @@ function App() {
         </div>
       </header>
       {/* Main Canvas Area */}
-      <div className='h-[calc(100vh-70px)] relative'>
+      <div className='h-[calc(100vh-80px)] relative'>
         <ReactFlow
           ref={flowRef}
           nodes={nodes}
@@ -276,16 +211,14 @@ function App() {
           onEdgeClick={onEdgeClick}
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
+          snapGrid={[15, 15]}
+          snapToGrid
           style={{ backgroundColor: '#121212' }}
           fitView
         >
           {showGrid && (
-            <Background color='#2a2a2a' gap={20} size={1} variant='dots' />
+            <Background color='#2a2a2a' gap={20} size={2} variant='dots' />
           )}
-          <Controls
-            style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}
-            showInteractive={false}
-          />
           {showMiniMap && (
             <MiniMap
               style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}
@@ -323,7 +256,9 @@ function App() {
                   {selectedDbType === 'mysql' ? 'Add Table' : 'Add Collection'}
                 </Button>
                 <Button
-                  onClick={exportDiagram}
+                  onClick={() => {
+                    exportToJson(nodes, edges, selectedDbType)
+                  }}
                   variant='secondary'
                   fullWidth
                   icon={<Download className='w-4 h-4' />}
@@ -342,145 +277,25 @@ function App() {
             </div>
           </Panel>
 
-          {/* View Options Panel */}
-          <Panel position='bottom-left' className='m-4'>
-            <div
-              className='rounded-lg p-4 shadow-xl'
-              style={{
-                backgroundColor: '#1a1a1a',
-                borderColor: '#2a2a2a',
-                border: '1px solid #2a2a2a',
-              }}
-            >
-              <h3 className='text-sm font-semibold text-gray-200 mb-3'>
-                View Options
-              </h3>
-              <div className='space-y-2'>
-                <button
-                  onClick={() => setShowGrid(!showGrid)}
-                  className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                    showGrid
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'text-white'
-                  }`}
-                  style={!showGrid ? { backgroundColor: '#2a2a2a' } : {}}
-                  onMouseEnter={(e) => {
-                    if (!showGrid)
-                      e.currentTarget.style.backgroundColor = '#3a3a3a'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!showGrid)
-                      e.currentTarget.style.backgroundColor = '#2a2a2a'
-                  }}
-                >
-                  <Grid className='w-4 h-4' />
-                  {showGrid ? 'Hide Grid' : 'Show Grid'}
-                </button>
-                <button
-                  onClick={() => setShowMiniMap(!showMiniMap)}
-                  className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                    showMiniMap
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'text-white'
-                  }`}
-                  style={!showMiniMap ? { backgroundColor: '#2a2a2a' } : {}}
-                  onMouseEnter={(e) => {
-                    if (!showMiniMap)
-                      e.currentTarget.style.backgroundColor = '#3a3a3a'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!showMiniMap)
-                      e.currentTarget.style.backgroundColor = '#2a2a2a'
-                  }}
-                >
-                  {showMiniMap ? (
-                    <EyeOff className='w-4 h-4' />
-                  ) : (
-                    <Eye className='w-4 h-4' />
-                  )}
-                  {showMiniMap ? 'Hide MiniMap' : 'Show MiniMap'}
-                </button>
-                <button
-                  onClick={toggleFullscreen}
-                  className='w-full px-4 py-2 text-white rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2'
-                  style={{ backgroundColor: '#2a2a2a' }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = '#3a3a3a')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = '#2a2a2a')
-                  }
-                >
-                  <Maximize2 className='w-4 h-4 text-gray-300' />
-                  {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                </button>
-              </div>
-            </div>
-          </Panel>
+          <PanelBottomLeft
+            showGrid={showGrid}
+            showMiniMap={showMiniMap}
+            onChangeGrid={() => {
+              setShowGrid(!showGrid)
+            }}
+            onChangeMiniMap={() => {
+              setShowMiniMap(!showMiniMap)
+            }}
+          />
 
-          {/* Enhanced Info Panel */}
-          <Panel position='top-right' className='m-4'>
-            <Button
-              onClick={handleDownload}
-              variant='primary'
-              className='mb-4'
-              icon={<Download className='w-4 h-4' />}
-            >
-              Export PNG
-            </Button>
-            <div
-              className='rounded-lg p-4 shadow-xl'
-              style={{
-                backgroundColor: '#1a1a1a',
-                borderColor: '#2a2a2a',
-                border: '1px solid #2a2a2a',
-              }}
-            >
-              <h3 className='text-sm font-semibold text-gray-200 mb-2'>
-                Database Info
-              </h3>
-              <div className='text-xs text-gray-400 space-y-1'>
-                <div className='flex justify-between'>
-                  <span>Type:</span>
-                  <span
-                    className={
-                      selectedDbType === 'mysql'
-                        ? 'text-blue-400'
-                        : 'text-green-400'
-                    }
-                  >
-                    {selectedDbType.toUpperCase()}
-                  </span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>
-                    {selectedDbType === 'mysql' ? 'Tables:' : 'Collections:'}
-                  </span>
-                  <span className='text-white'>{nodes.length}</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>Relationships:</span>
-                  <span className='text-white'>{edges.length}</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>Grid:</span>
-                  <span
-                    className={showGrid ? 'text-green-400' : 'text-red-400'}
-                  >
-                    {showGrid ? 'ON' : 'OFF'}
-                  </span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>MiniMap:</span>
-                  <span
-                    className={showMiniMap ? 'text-green-400' : 'text-red-400'}
-                  >
-                    {showMiniMap ? 'ON' : 'OFF'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Panel>
+          <PanelRight
+            dbType={selectedDbType}
+            edges={edges}
+            nodes={nodes}
+            onExport={() => {
+              exportToPng(flowRef, fitView)
+            }}
+          />
         </ReactFlow>
 
         {/* Relationship Panel */}
